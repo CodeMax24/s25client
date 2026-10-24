@@ -59,29 +59,43 @@ jobs:
       - name: Test
         run: ctest --test-dir build-windows --output-on-failure -C Release --parallel 4
 
-      - name: Create Windows package
-        run: cmake --build build-windows --config Release --target package --parallel 4
-
-      - name: Prepare artifact
+      - name: Prepare Windows package
         shell: pwsh
         run: |
-          $package = Get-ChildItem -Path build-windows -Recurse -Filter 's25rttr_*.zip' | Select-Object -First 1
-          if (-not $package) {
-            throw 'CMake did not create a Windows ZIP package.'
+          $source = Join-Path $PWD 'build-windows/Release'
+          $target = Join-Path $PWD 'dist/RTTR-CodeMax24-windows-x64'
+          $archive = Join-Path $PWD 'dist/RTTR-CodeMax24-windows-x64.zip'
+          if (-not (Test-Path (Join-Path $source 's25client.exe'))) {
+            throw 'The Release build did not create s25client.exe.'
           }
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item $package.FullName 'dist/RTTR-CodeMax24-windows-x64.zip'
+
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item (Join-Path $source '*') $target -Recurse -Force
+          Get-ChildItem $target -Filter 'Test_*.exe' | Remove-Item -Force
+          Get-ChildItem $target -Filter '*.lib' | Remove-Item -Force
+          Get-ChildItem $target -Filter '*.pdb' | Remove-Item -Force
+          Remove-Item (Join-Path $target 'ai-battle.exe') -Force -ErrorAction SilentlyContinue
+
           @(
             "Repository: $env:GITHUB_REPOSITORY"
             "Commit: $env:GITHUB_SHA"
             "Configuration: Release"
             "Architecture: x64"
-          ) | Set-Content -Encoding utf8 'dist/BUILD-INFO.txt'
+          ) | Set-Content -Encoding utf8 (Join-Path $target 'BUILD-INFO.txt')
+
+          Push-Location $target
+          try {
+            .\s25client.exe --version | Tee-Object -FilePath 'VERSION.txt'
+          } finally {
+            Pop-Location
+          }
+
+          Compress-Archive -Path (Join-Path $target '*') -DestinationPath $archive -CompressionLevel Optimal
 
       - name: Upload Windows build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: RTTR-windows-x64-${{ github.sha }}
-          path: dist/
+          path: dist/RTTR-CodeMax24-windows-x64.zip
           if-no-files-found: error
           retention-days: 30
