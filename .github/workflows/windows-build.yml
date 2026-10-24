@@ -1,0 +1,87 @@
+# Copyright (C) 2005 - 2026 Settlers Freaks <sf-team at siedler25.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: Windows test build
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feature/**
+      - fix/**
+
+concurrency:
+  group: ${{ format('windows-test-build-{0}:{1}', github.repository, github.ref) }}
+  cancel-in-progress: true
+
+env:
+  BOOST_VERSION: 1.81.0
+
+jobs:
+  windows-x64:
+    name: Windows x64 Release
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+
+      - name: Install Boost
+        uses: MarkusJx/install-boost@f9d34f6fe427b8f2ae424d7bf2a3ebccb0dae5a3 # v2.6.0
+        id: install-boost
+        with:
+          boost_version: ${{ env.BOOST_VERSION }}
+          platform_version: '2022'
+          toolset: msvc
+
+      - name: Configure
+        env:
+          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
+        shell: cmd
+        run: >-
+          cmake -S . -B build-windows
+          -G "Visual Studio 17 2022" -A x64
+          -DRTTR_ENABLE_WERROR=ON
+          -DRTTR_EXTERNAL_BUILD_TESTING=ON
+          -DRTTR_INCLUDE_DEVTOOLS=ON
+          -DRTTR_BUNDLE=ON
+
+      - name: Build
+        run: cmake --build build-windows --config Release --parallel 4
+
+      - name: Test
+        run: ctest --test-dir build-windows --output-on-failure -C Release --parallel 4
+
+      - name: Create Windows package
+        run: cmake --build build-windows --config Release --target package --parallel 4
+
+      - name: Prepare artifact
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem -Path build-windows -Recurse -Filter 's25rttr_*.zip' | Select-Object -First 1
+          if (-not $package) {
+            throw 'CMake did not create a Windows ZIP package.'
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $package.FullName 'dist/RTTR-CodeMax24-windows-x64.zip'
+          @(
+            "Repository: $env:GITHUB_REPOSITORY"
+            "Commit: $env:GITHUB_SHA"
+            "Configuration: Release"
+            "Architecture: x64"
+          ) | Set-Content -Encoding utf8 'dist/BUILD-INFO.txt'
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: RTTR-windows-x64-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
