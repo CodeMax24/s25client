@@ -226,7 +226,7 @@ function addPlayerRes(p, onLoad)
     if(p == 0) then
         -- goods
         rttr:GetPlayer(p):AddWares({
-            [GD_BEER        ] =  0,
+            [GD_BEER        ] = 200,
             [GD_TONGS       ] =  0,
             [GD_HAMMER      ] =  0,
             [GD_AXE         ] =  0,
@@ -241,20 +241,20 @@ function addPlayerRes(p, onLoad)
             [GD_ROLLINGPIN  ] =  0,
             [GD_BOW         ] =  0,
             [GD_BOAT        ] =  0,
-            [GD_SWORD       ] = 100,
-            [GD_IRON        ] = 100,
+            [GD_SWORD       ] = 200,
+            [GD_IRON        ] = 200,
             [GD_FLOUR       ] =  0,
             [GD_FISH        ] = 20,
             [GD_BREAD       ] = 20,
-            [GD_SHIELD      ] = 100,
+            [GD_SHIELD      ] = 200,
             [GD_WOOD        ] =  0,
             [GD_BOARDS      ] = 50,
             [GD_STONES      ] = 50,
             [GD_GRAIN       ] =  0,
-            [GD_COINS       ] = 100,
-            [GD_GOLD        ] = 100,
-            [GD_IRONORE     ] = 100,
-            [GD_COAL        ] = 100,
+            [GD_COINS       ] = 200,
+            [GD_GOLD        ] = 200,
+            [GD_IRONORE     ] = 200,
+            [GD_COAL        ] = 200,
             [GD_MEAT        ] = 20,
             [GD_HAM         ] =  0
         })
